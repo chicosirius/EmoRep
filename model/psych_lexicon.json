@@ -1,0 +1,23 @@
+{
+    "Joy": ["happy", "excited", "cheerful", "relieved", "joyful", "delighted"],
+    "Sadness": ["sad", "depressed", "lonely", "hopeless", "tearful", "miserable"],
+    "Anger": ["angry", "annoyed", "furious", "irritated", "offended", "outraged"],
+    "Fear": ["afraid", "anxious", "nervous", "panicked", "insecure", "worried"],
+    "Disgust": ["disgusted", "disturbed", "grossed", "sickened", "repulsed"],
+    "Surprise": ["surprised", "shocked", "amazed", "startled", "astonished"],
+    "Trusting": ["trusting", "respectful", "loyal", "honest", "supportive"],
+    "Defensive": ["cautious", "suspicious", "guarded", "defensive", "wary"],
+    "Manipulative": ["manipulative", "strategic", "controlling", "persuasive", "deceptive"],
+    "Cooperative": ["fair", "collaborative", "constructive", "diplomatic", "generous"],
+    "Extraversion": ["energetic", "outgoing", "talkative", "sociable"],
+    "Agreeableness": ["kind", "warm", "caring", "friendly"],
+    "Conscientiousness": ["organized", "diligent", "responsible", "thoughtful"],
+    "Neuroticism": ["insecure", "reactive", "stressed", "sensitive"],
+    "Openness": ["curious", "imaginative", "creative", "open-minded"],
+    "Guilt": ["guilty", "ashamed", "regretful", "remorseful", "embarrassed"],
+    "Pride": ["proud", "confident", "accomplished", "dignified", "successful"],
+    "Dominant": ["assertive", "competitive", "commanding", "forceful"],
+    "Submissive": ["hesitant", "obedient", "reserved", "passive"],
+    "Curiosity": ["curious", "interested", "engaged", "fascinated"],
+    "Avoidance": ["overwhelmed", "lost", "distracted", "confused"]
+}
