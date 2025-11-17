@@ -41,8 +41,19 @@ from emo_text_generation import (
     NEUTRAL_PROMPT_TEMPLATE, 
     EMOTIONAL_PROMPT_TEMPLATE,
     TASK_PROMPT_TEMPLATE,
-    JUDGE_PROMPT_TEMPLATE
+    JUDGE_PROMPT_TEMPLATE,
+    llm_judge_score
 )
+
+# Automatically select GPUs based on available devices
+gpu_count = torch.cuda.device_count()
+if gpu_count > 0:
+    # Set CUDA_VISIBLE_DEVICES to use all available GPUs
+    # os.environ["CUDA_VISIBLE_DEVICES"] = ",".join(str(i) for i in range(gpu_count))
+    os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+else:
+    print("No GPU found. Defaulting to CPU.")
+    os.environ["CUDA_VISIBLE_DEVICES"] = ""
 
 # ---------------------------
 # Utilities
@@ -295,8 +306,8 @@ def run_injection_and_viz(records_jsonl: str,
 
     print("[Stage] Loading model & tokenizer...")
     tokenizer = AutoTokenizer.from_pretrained(hf_model, trust_remote_code=True)
-    model = AutoModelForCausalLM.from_pretrained(hf_model, trust_remote_code=True, device_map="auto")
-    model.to(device_t)
+    model = AutoModelForCausalLM.from_pretrained(hf_model, trust_remote_code=True, device_map="cuda:0")
+    # model.to(device_t)
     model.eval()
 
     print("[Stage] Loading emotion vectors:", emotion_vecs_npz)
@@ -391,24 +402,42 @@ def run_injection_and_viz(records_jsonl: str,
         full_inj = prompt_emotional + "\n\n" + gen_inj
         emb_inj = compute_response_embedding_mean(full_inj, prompt_emotional, extractor, layer_prefer=layer_prefer)
 
-        # 3) 记录
-        records_out.append({
-            "idx": row["idx"] if "idx" in row else idx,
-            "gold_emotion": emo,
-            "prompt_emotional": prompt_emotional,
-            "generated_ordinary": gen_ord,
-            "generated_injected": gen_inj
-        })
-        embed_before.append(emb_ord)
-        embed_after.append(emb_inj)
+        # score generations using scorer model
+        score_ord = llm_judge_score(scorer_tok, scorer_model_hf, emo, question_combined, gen_ord, device=device_t)
+        score_inj = llm_judge_score(scorer_tok, scorer_model_hf, emo, question_combined, gen_inj, device=device_t)
+        print(f"[Judge Scores] ordinary: {score_ord:.4f}, injected: {score_inj:.4f}")
+
         # 4) 计算投影（cosine similarity）
         cos_before = cosine_similarity(emb_ord.reshape(1, -1), em_vector.reshape(1, -1))[0][0]
         cos_after = cosine_similarity(emb_inj.reshape(1, -1), em_vector.reshape(1, -1))[0][0]
-        proj_before.append(cos_before)
-        proj_after.append(cos_after)
         print(f"[Info] Cosine similarity to '{emo}' vector: before={cos_before:.4f}, after={cos_after:.4f}")
 
+        records_out.append({
+            "idx": row["idx"] if "idx" in row else idx,
+            "scenario": row["scenario"],
+            "question": row["question"],
+            "gold_emotion": emo,
+            "prompt_emotional": prompt_emotional,
+            "generated_ordinary": gen_ord,
+            "generated_injected": gen_inj,
+            "score_ordinary": float(score_ord),
+            "score_injected": float(score_inj),
+            "cosine_before": float(cos_before),
+            "cosine_after": float(cos_after)
+        })
+
+        # 保存为jsonL
+        out_jsonl_path = os.path.join(output_dir, f"sc-injection_generation_records-layer{args.layer_prefer}-alpha{args.alpha}.jsonl")
+        with open(out_jsonl_path, 'w', encoding='utf-8') as f:
+            for rec in records_out:
+                f.write(json.dumps(rec, ensure_ascii=False) + "\n")
         return
+
+    print("Average cosine similarity before injection:", np.mean(proj_before))
+    print("Average cosine similarity after injection:", np.mean(proj_after))
+    print("Average score before injection:", np.mean([r["score_ordinary"] for r in records_out]))
+    print("Average score after injection:", np.mean([r["score_injected"] for r in records_out]))
+    print(f"[Saved] generation records to {out_jsonl_path}")
         
 
 
@@ -417,16 +446,16 @@ def run_injection_and_viz(records_jsonl: str,
 # -------------------------
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--records_jsonl", default="/data/home/xixian_yong/EmoRep/embedding/qwen2.5-7b-outputs/sc-records-raw.jsonl")
-    parser.add_argument("--emotion_vecs", default="/data/home/xixian_yong/EmoRep/embedding/emotion_probing_outputs/emotion_vectors_centered_pca.npz", help="npz file with keys like 'anger__layer23'")
+    parser.add_argument("--records_jsonl", default="qwen2.5-7b-outputs/sc-records-raw.jsonl")
+    parser.add_argument("--emotion_vecs", default="emotion_probing_outputs/emotion_vectors_centered_pca.npz", help="npz file with keys like 'anger__layer23'")
     parser.add_argument("--hf_model", default="Qwen/Qwen2.5-7B-Instruct")
-    parser.add_argument("--scorer_model", default="Qwen/Qwen2.5-3B-Instruct", help="optional: model used for scoring (if different from hf_model)")
+    parser.add_argument("--scorer_model", default="Qwen/Qwen2.5-7B-Instruct", help="optional: model used for scoring (if different from hf_model)")
     parser.add_argument("--output_dir", default="injection_viz_out_qwen2.5-7b-instruct")
-    parser.add_argument("--alpha", type=float, default=50, help="injection strength scalar")
+    parser.add_argument("--alpha", type=float, default=5, help="injection strength scalar")
     parser.add_argument("--pref_len", type=int, default=6, help="prefix length (virtual tokens)")
     parser.add_argument("--num_prompts", type=int, default=1000, help="number of prompts to evaluate")
     parser.add_argument("--device", type=str, default="cuda")
-    parser.add_argument("--layer_prefer", type=int, default=None, help="prefer emotion vector from this layer if multiple")
+    parser.add_argument("--layer_prefer", type=int, default=28, help="prefer emotion vector from this layer if multiple")
     args = parser.parse_args()
 
     run_injection_and_viz(args.records_jsonl, args.emotion_vecs, args.hf_model,

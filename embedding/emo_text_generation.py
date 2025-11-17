@@ -43,13 +43,13 @@ from sklearn.model_selection import train_test_split
 
 
 # Automatically select GPUs based on available devices
-gpu_count = torch.cuda.device_count()
-if gpu_count > 0:
-    # os.environ["CUDA_VISIBLE_DEVICES"] = ",".join(str(i) for i in range(gpu_count))
-    os.environ["CUDA_VISIBLE_DEVICES"] = "1"
-else:
-    print("No GPU found. Defaulting to CPU.")
-    os.environ["CUDA_VISIBLE_DEVICES"] = ""
+# gpu_count = torch.cuda.device_count()
+# if gpu_count > 0:
+#     # os.environ["CUDA_VISIBLE_DEVICES"] = ",".join(str(i) for i in range(gpu_count))
+#     os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+# else:
+#     print("No GPU found. Defaulting to CPU.")
+#     os.environ["CUDA_VISIBLE_DEVICES"] = ""
 
 
 # -------------------------
@@ -309,7 +309,7 @@ Answer:
 """
 
 
-def llm_judge_score(hf_tokenizer, hf_model_for_generation, emotion: str, question: str, answer: str, device='cpu', max_new_tokens=8, num_repeats: int = 5) -> float:
+def llm_judge_score(hf_tokenizer, hf_model_for_generation, emotion: str, question: str, answer: str, device='cuda', max_new_tokens=8, num_repeats: int = 5) -> float:
     """
     Use HF generation model to generate a numeric score multiple times and return the average.
     num_repeats: number of generations to sample and average (uses sampling to get diversity).
