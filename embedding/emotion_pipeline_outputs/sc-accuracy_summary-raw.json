@@ -1,0 +1,13 @@
+{
+  "overall_accuracy": 0.3678571428571429,
+  "per_emotion_accuracy": {
+    "anger": 0.7125,
+    "anticipation": 0.55,
+    "disgust": 0.0,
+    "fear": 0.9,
+    "joy": 0.2625,
+    "sadness": 0.0875,
+    "trust": 0.0625
+  },
+  "total_samples": 560
+}
